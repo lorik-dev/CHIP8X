@@ -1,8 +1,6 @@
-#include <iostream>
 #include <iomanip>
 
-#include "include/cpu.h"
-#include "include/data.h"
+#include "cpu.h"
 
 // At first-execution, indicates that no cpu instance
 // has been initialised yet
@@ -11,16 +9,44 @@ std::shared_ptr<cpu> cpu::instance = nullptr;
 cpu::cpu() {
     std::copy(font_set.begin(), font_set.end(), memory.begin());    // Copy font_set into beginning of memory
     
+    pc = info::ROM_START_ADDRESS;
     display.fill(info::BG_COLOR);
     memory.fill(0);
     stack.fill(0);
-    v.fill(0); 
+    v.fill(0);
+
+    state = STATE_RUNNING;
     std::cout << "CHIP8 core started." << std::endl;
 }
 
 cpu::~cpu() {
     std::cout << "CHIP8 core destroyed." << std::endl;
 } 
+
+bool cpu::loadrom(const char* rom_name) {
+    // Load ROM
+    FILE* rom = fopen(rom_name, "rb");
+    if (!rom) {
+        std::cerr << "ERROR: ROM file " << rom_name << " could not be opened." << std::endl;
+        return false;
+    }
+
+    // Read the ROM data into RAM
+    fseek(rom, 0L, SEEK_END); // Seek end of the rom
+    long rom_size = ftell(rom); // Get current position, which is the ROM size in bytes
+    if (rom_size > info::ROM_MAX_SIZE) {
+        std::cerr << "ERROR: ROM file " << rom_name << " is too large (" << rom_size << " bytes); max size allowed: " << info::ROM_MAX_SIZE << " bytes" << std::endl;
+        return false;
+    }
+    rewind(rom);
+
+    if (fread(&memory[pc], rom_size, 1, rom) != 1) {
+        std::cerr << "ERROR: ROM file " << rom_name << " could not be read into CHIP8 memory" << std::endl;
+        return false;
+    }
+
+    fclose(rom);
+}
 
 void cpu::fetch() {
     // Convert the big-endian opcode to little-endian format.
@@ -96,7 +122,7 @@ void cpu::illegal() {
 void cpu::cycle() {
     if (pc>info::MEMORY_SIZE){
         std::cerr << "ERROR: Program counter out of bounds. Exiting..." << std::endl;
-        exit(-1);
+        exit(EXIT_FAILURE);
     }
     fetch();
 
@@ -119,7 +145,7 @@ void cpu::call() {
     }
     else {
         std::cerr << "ERROR: Stack overflow. Stack size: " << stack.size() << ". Exiting ..." << std::endl;
-        exit(-1);
+        exit(EXIT_FAILURE);
     }
 }
 
@@ -132,4 +158,11 @@ void cpu::skip() {
 void cpu::subret() {
     stack_pointer--;
     pc = stack[stack_pointer];
+}
+
+std::shared_ptr<cpu> cpu::getInstance() {
+    if (instance == nullptr) {
+        instance = std::shared_ptr<cpu>(new cpu());
+    }
+    return instance;
 }

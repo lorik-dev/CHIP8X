@@ -15,13 +15,14 @@
 #define y(opcode) ((opcode >> 4) & 0x0F)
 
 namespace info {
-    constexpr uint32_t MEMORY_SIZE = 4096;
-    constexpr uint32_t ROM_START_ADDRESS = 0x200; 
+    constexpr uint32_t MEMORY_SIZE = 4096;			// Default memory size: 4KB (4096)
+    constexpr uint32_t ROM_START_ADDRESS = 0x200;	// Default ROM_START_ADDRESS: 0x200
     const uint32_t ROM_MAX_SIZE = (MEMORY_SIZE - ROM_START_ADDRESS); // Maximum allowed size with respect to MEMORY_SIZE and address space
-    constexpr uint32_t INTERNAL_SCREEN_WIDTH = 64; // CHIP8 original X resolution
-    constexpr uint32_t INTERNAL_SCREEN_HEIGHT = 32; // CHIP8 original Y resolution 
+    constexpr uint32_t INTERNAL_SCREEN_WIDTH = 64; // CHIP8 original X resolution (64)
+    constexpr uint32_t INTERNAL_SCREEN_HEIGHT = 32; // CHIP8 original Y resolution	(32)
     const uint32_t INTERNAL_SCREEN_PIXELS = (INTERNAL_SCREEN_WIDTH*INTERNAL_SCREEN_HEIGHT); // CHIP8 original resolution pixel amount
-    constexpr uint32_t SCALE_FACTOR = 20; // Default resolution: 1280x640
+	constexpr uint32_t DEFAULT_SCALE_FACTOR = 20; // Default resolution: 1280x640
+	extern uint32_t SCALE_FACTOR;
     constexpr uint32_t FG_COLOR = 0xFFFFFFFF; // Foreground color RGBA8888; WHITE
     constexpr uint32_t BG_COLOR = 0x000000FF; // Background color RGBA8888; BLACK
 }

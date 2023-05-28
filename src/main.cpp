@@ -1,7 +1,35 @@
-
 #include <iostream>
+#include "display.h"
 
-int main() {
-    std::cout << "Hello World!";
-    return 0;
+int main(int argc, char **argv) {
+	if (argc < 2) {
+		fprintf(stderr, "Usage: ./CHIP8x rom_file [scale_factor]\n");
+		exit(EXIT_FAILURE);
+	}
+	if (argc == 3) {
+		uint32_t result = std::strtoul(argv[2], nullptr, 0);
+		if (result != 0) {
+			info::SCALE_FACTOR = result;
+			std::cout << "INFO: Scale factor set to " << result << " (" << info::INTERNAL_SCREEN_WIDTH*result << "*" << info::INTERNAL_SCREEN_HEIGHT*result << ") " << std::endl;
+		}
+		else {
+			info::SCALE_FACTOR = info::DEFAULT_SCALE_FACTOR;
+			std::cout << "INFO: Scale factor set to " << info::DEFAULT_SCALE_FACTOR << " (" << info::INTERNAL_SCREEN_WIDTH * info::DEFAULT_SCALE_FACTOR << "*" << info::INTERNAL_SCREEN_HEIGHT * info::DEFAULT_SCALE_FACTOR << ") " << std::endl;
+		}
+	}
+	else {
+		info::SCALE_FACTOR = info::DEFAULT_SCALE_FACTOR;
+		std::cout << "INFO: Scale factor set to " << info::DEFAULT_SCALE_FACTOR << " (" << info::INTERNAL_SCREEN_WIDTH * info::DEFAULT_SCALE_FACTOR << "*" << info::INTERNAL_SCREEN_HEIGHT * info::DEFAULT_SCALE_FACTOR << ") " << std::endl;
+	}
+	const char* rom_name = argv[1];
+	std::shared_ptr<cpu> cpu = cpu::getInstance();
+	if (!cpu->loadrom(argv[1]));
+	{
+		exit(EXIT_FAILURE);
+	}
+
+	std::shared_ptr<display> display = display::getInstance();
+	
+	while (true) {}
+	return 0;
 }
