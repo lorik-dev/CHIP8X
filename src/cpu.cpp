@@ -4,6 +4,8 @@
 #include "include/cpu.h"
 #include "include/data.h"
 
+// At first-execution, indicates that no cpu instance
+// has been initialised yet
 std::shared_ptr<cpu> cpu::instance = nullptr;
 
 cpu::cpu() {
@@ -13,7 +15,12 @@ cpu::cpu() {
     memory.fill(0);
     stack.fill(0);
     v.fill(0); 
+    std::cout << "CHIP8 core started." << std::endl;
 }
+
+cpu::~cpu() {
+    std::cout << "CHIP8 core destroyed." << std::endl;
+} 
 
 void cpu::fetch() {
     // Convert the big-endian opcode to little-endian format.
@@ -39,15 +46,51 @@ void cpu::execute() {
                     illegal();
                     break;
             } 
-        //case 0x1:
+        case 0x1:
+            // 0x1NNN: Jump to NNNN
+            jump();
+            break;
         case 0x2:
-            
+            // 0x2NNN: Call subroutine at NNN
+            call();
+            break;
+        case 0x3:
+            // 0x3XNN: Skip next instruction if VX == NN
+            if (stack[x(opcode)] == nn(opcode)) {
+                skip();
+                break;
+            }
+        case 0x4:
+            // 0x4XNN: Skip next instruction if VX != NN
+            if (stack[x(opcode)] != nn(opcode)) {
+                skip();
+                break;
+            }
+        case 0x5:
+            // 0x5XY0: Skip next instruction if VX == VY
+            if (stack[x(opcode)] == stack[y(opcode)]) {
+                skip();
+                break;
+            }
+        case 0x6:
+            // 0x6XNN: Set VX to NN
+            stack[x(opcode)] = nn(opcode);
+            break;
+        case 0x7:
+            // 0x7XNN: Add NN to VX
+            stack[x(opcode)] += nn(opcode);
+            break;
+
+
+
+
 
     }
 }
 
 void cpu::illegal() {
-    std::cout << "ERROR: Opcode 0x" << std::setfill('0') << std::setw(4) << std::hex << opcode << " does not exist. Exiting..." << std::endl;
+    std::cout << "ERROR: Opcode 0x" << std::setfill('0') << std::setw(4) << std::hex << opcode << 
+        " does not exist. Exiting..." << std::endl;
 }
 
 void cpu::cycle() {
@@ -63,6 +106,27 @@ void cpu::cycle() {
 
 void cpu::clear_screen() {
     display.fill(info::BG_COLOR);
+}
+
+void cpu::jump() {
+    pc = nnn(opcode);
+}
+
+void cpu::call() {
+    if (stack_pointer < stack.size()) {
+        stack[stack_pointer] = pc;
+        stack_pointer++;
+    }
+    else {
+        std::cerr << "ERROR: Stack overflow. Stack size: " << stack.size() << ". Exiting ..." << std::endl;
+        exit(-1);
+    }
+}
+
+void cpu::skip() {
+    // PC is already incremented after fetch()
+    // so to skip next instruction, PC must be incremented to next opcode
+    pc += 2;
 }
 
 void cpu::subret() {

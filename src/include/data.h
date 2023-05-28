@@ -6,6 +6,7 @@
 #include <cstdint>
 #include <array>
 
+//Convert BE CHIP8 opcode to LE format 
 #define prefix(opcode) ((opcode >>12) & 0xF)
 #define nnn(opcode) (opcode & 0x0FFF)
 #define nn(opcode) (opcode & 0x0FF)
@@ -16,7 +17,7 @@
 namespace info {
     constexpr uint32_t MEMORY_SIZE = 4096;
     constexpr uint32_t ROM_START_ADDRESS = 0x200; 
-    const uint32_t ROM_MAX_SIZE = (RAM_SIZE - ROM_START_ADDRESS); // Maximum allowed size with respect to MEMORY_SIZE and address space
+    const uint32_t ROM_MAX_SIZE = (MEMORY_SIZE - ROM_START_ADDRESS); // Maximum allowed size with respect to MEMORY_SIZE and address space
     constexpr uint32_t INTERNAL_SCREEN_WIDTH = 64; // CHIP8 original X resolution
     constexpr uint32_t INTERNAL_SCREEN_HEIGHT = 32; // CHIP8 original Y resolution 
     const uint32_t INTERNAL_SCREEN_PIXELS = (INTERNAL_SCREEN_WIDTH*INTERNAL_SCREEN_HEIGHT); // CHIP8 original resolution pixel amount
