@@ -6,11 +6,15 @@
 // has been initialised yet
 std::shared_ptr<cpu> cpu::instance = nullptr;
 
+
 cpu::cpu() {
+    draw_flag = false;
     std::copy(font_set.begin(), font_set.end(), memory.begin());    // Copy font_set into beginning of memory
     
+    i = 0, delay_timer = 0, opcode = 0, sound_timer = 0, stack_pointer = 0;
+
     pc = info::ROM_START_ADDRESS;
-    display.fill(info::BG_COLOR);
+    SCREEN.fill(info::BG_COLOR);
     memory.fill(0);
     stack.fill(0);
     v.fill(0);
@@ -25,8 +29,10 @@ cpu::~cpu() {
 
 bool cpu::loadrom(const char* rom_name) {
     // Load ROM
-    FILE* rom = fopen(rom_name, "rb");
-    if (!rom) {
+    FILE* rom; 
+    errno_t err;
+
+    if ((err = fopen_s(&rom, rom_name, "rb") != 0)) {
         std::cerr << "ERROR: ROM file " << rom_name << " could not be opened." << std::endl;
         return false;
     }
@@ -46,6 +52,7 @@ bool cpu::loadrom(const char* rom_name) {
     }
 
     fclose(rom);
+    return true;
 }
 
 void cpu::fetch() {
@@ -57,6 +64,8 @@ void cpu::fetch() {
 }
 
 void cpu::execute() {
+    printf("Address: 0x%04X, Opcode: 0x%04X \n", pc - 2, opcode);
+    //std::cout << "prefix: " << prefix(opcode) << std::endl;
     switch (prefix(opcode)) {
         case 0x0:
             switch(nn(opcode)){
@@ -72,6 +81,7 @@ void cpu::execute() {
                     illegal();
                     break;
             } 
+            break;
         case 0x1:
             // 0x1NNN: Jump to NNNN
             jump();
@@ -82,41 +92,69 @@ void cpu::execute() {
             break;
         case 0x3:
             // 0x3XNN: Skip next instruction if VX == NN
-            if (stack[x(opcode)] == nn(opcode)) {
+            if (v[x(opcode)] == nn(opcode)) {
                 skip();
-                break;
             }
+            break;
         case 0x4:
             // 0x4XNN: Skip next instruction if VX != NN
-            if (stack[x(opcode)] != nn(opcode)) {
+            if (v[x(opcode)] != nn(opcode)) {
                 skip();
-                break;
             }
+            break;
         case 0x5:
             // 0x5XY0: Skip next instruction if VX == VY
-            if (stack[x(opcode)] == stack[y(opcode)]) {
+            if (v[x(opcode)] == v[y(opcode)]) {
                 skip();
-                break;
             }
+            break;
         case 0x6:
             // 0x6XNN: Set VX to NN
-            stack[x(opcode)] = nn(opcode);
+            v[x(opcode)] = nn(opcode);
             break;
         case 0x7:
             // 0x7XNN: Add NN to VX
-            stack[x(opcode)] += nn(opcode);
+            v[x(opcode)] += nn(opcode);
             break;
-
-
-
-
+        case 0xA:
+            // 0xANNN
+            i = nnn(opcode);
+            break;
+        case 0xD:
+            draw();
+            break;
+        default:
+            illegal();
+            break;
 
     }
 }
 
+void cpu::draw() {
+    v[0xF] = 0;
+    uint16_t x_root = v[x(opcode)] % info::INTERNAL_SCREEN_WIDTH;
+    uint16_t y_root = v[y(opcode)] % info::INTERNAL_SCREEN_HEIGHT;
+    for (uint16_t row = 0; row < n(opcode); row++) {
+        uint16_t line = memory[i + row];
+        for (uint16_t width = 0; width < 8; width++) {
+            // Convert 2D X,Y into 1D pixel index for screen array
+            uint16_t pixel_index = (y_root + row) * info::INTERNAL_SCREEN_WIDTH + (x_root + width);   
+            if (line & (0x80 >> width)) {
+                if (SCREEN[pixel_index] == info::FG_COLOR) {
+                    // If current pixel in sprite row is on AND
+                    // pixel at X, Y in SCREEN is on
+                    v[0xF] = 1;
+                }
+                SCREEN[pixel_index] ^= info::FG_COLOR;
+            }
+        }
+    }
+    draw_flag = true;
+}
+
 void cpu::illegal() {
-    std::cout << "ERROR: Opcode 0x" << std::setfill('0') << std::setw(4) << std::hex << opcode << 
-        " does not exist. Exiting..." << std::endl;
+    std::cout << "ERROR: Opcode 0x" << std::setfill('0') << std::setw(4) << std::uppercase << std::hex << opcode <<
+        " does not exist." << std::endl;
 }
 
 void cpu::cycle() {
@@ -124,14 +162,17 @@ void cpu::cycle() {
         std::cerr << "ERROR: Program counter out of bounds. Exiting..." << std::endl;
         exit(EXIT_FAILURE);
     }
+    draw_flag = false;
     fetch();
 
     // Increment the program counter to point to the next opcode
     pc+=2;
+    execute();
+    pc = pc;
 }
 
 void cpu::clear_screen() {
-    display.fill(info::BG_COLOR);
+    SCREEN.fill(info::BG_COLOR);
 }
 
 void cpu::jump() {

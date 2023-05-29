@@ -13,10 +13,14 @@
 class display {
 
 private:
-    SDL_Window* window_sdl;
-    SDL_Renderer* renderer_sdl; 
 
     display();
+
+    SDL_Window* window_sdl;
+
+    SDL_Renderer* renderer_sdl;
+
+    SDL_Texture* texture_sdl;
 
     static std::shared_ptr<display> instance;
 
@@ -25,6 +29,8 @@ public:
     ~display();
 
     bool init_sdl();
+
+    void update_screen(std::array<uint32_t, info::INTERNAL_SCREEN_PIXELS> &SCREEN);
 
     static std::shared_ptr<display> getInstance();
 };

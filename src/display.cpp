@@ -17,6 +17,7 @@ display::display() {
 
 display::~display() {
     std::cout << "Display destroyed." << std::endl;
+
 }
 
 bool display::init_sdl() {
@@ -39,7 +40,24 @@ bool display::init_sdl() {
     }
     SDL_Log("SDL renderer initialised.\n");
 
+    texture_sdl = SDL_CreateTexture(renderer_sdl, SDL_PIXELFORMAT_RGBA32, SDL_TEXTUREACCESS_STREAMING, info::INTERNAL_SCREEN_WIDTH,
+        info::INTERNAL_SCREEN_HEIGHT);
+    if (!texture_sdl) {
+        std::cerr << "ERROR: Could not create an SDL texture %s\n" << SDL_GetError();
+    }
+    std::cout << "Texture initialized." << std::endl;
+
     return true; // Success
+}
+
+// Update window with any changes
+void display::update_screen(std::array<uint32_t, info::INTERNAL_SCREEN_PIXELS> &SCREEN) {
+    // Update SDL texture with pixel data from a 1D array representing the screen
+    // Pitch: The number of bytes per scanline in the screen array
+    SDL_UpdateTexture(texture_sdl , nullptr, &SCREEN, info::INTERNAL_SCREEN_WIDTH * sizeof(uint32_t));
+    SDL_RenderClear(renderer_sdl);
+    SDL_RenderCopy(renderer_sdl, texture_sdl, nullptr, nullptr);
+    SDL_RenderPresent(renderer_sdl);
 }
 
 std::shared_ptr<display> display::getInstance() {

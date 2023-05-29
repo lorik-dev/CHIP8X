@@ -7,6 +7,7 @@
 #include <memory>
 #include <array>
 #include "data.h"
+#include "display.h"
 
 // Emulator states
 typedef enum {
@@ -20,9 +21,8 @@ class cpu {
 private:
     std::array<uint8_t, info::MEMORY_SIZE> memory{};    // CHIP8 memory; default 4KB
 
-    emulator_state_t state;             // Emulator state
     uint16_t opcode;
-    std::array<uint16_t, 16> stack{};   // Subroutine stack
+    std::array<uint16_t, info::STACK_SIZE> stack{};   // Subroutine stack
     uint16_t stack_pointer;             // Subroutine stack pointer
     std::array<uint8_t, 16> v{};        // V0-VF data registerss
     uint16_t pc;                        // PC program counter
@@ -38,7 +38,11 @@ private:
 public:
     ~cpu();
 
-    std::array<uint32_t, info::INTERNAL_SCREEN_PIXELS> display{};
+    emulator_state_t state;             // Emulator state
+
+    std::array<uint32_t, info::INTERNAL_SCREEN_PIXELS> SCREEN{};
+
+    bool draw_flag{};
 
     bool loadrom(const char* rom_name);
 
@@ -46,9 +50,11 @@ public:
 
     void cycle();
 
-    void illegal();
-
     void execute();
+
+    void draw();
+
+    void illegal();
 
     void clear_screen();
 

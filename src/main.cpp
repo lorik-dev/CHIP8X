@@ -21,15 +21,26 @@ int main(int argc, char **argv) {
 		info::SCALE_FACTOR = info::DEFAULT_SCALE_FACTOR;
 		std::cout << "INFO: Scale factor set to " << info::DEFAULT_SCALE_FACTOR << " (" << info::INTERNAL_SCREEN_WIDTH * info::DEFAULT_SCALE_FACTOR << "*" << info::INTERNAL_SCREEN_HEIGHT * info::DEFAULT_SCALE_FACTOR << ") " << std::endl;
 	}
+
 	const char* rom_name = argv[1];
 	std::shared_ptr<cpu> cpu = cpu::getInstance();
-	if (!cpu->loadrom(argv[1]));
-	{
+	if (cpu->loadrom(argv[1]) == false) {
 		exit(EXIT_FAILURE);
 	}
 
 	std::shared_ptr<display> display = display::getInstance();
-	
-	while (true) {}
+
+	while (cpu->state != STATE_QUIT) {
+
+		if (cpu->state == STATE_PAUSE) continue;
+
+		cpu->cycle();
+
+		SDL_Delay(16);
+
+		display->update_screen(cpu->SCREEN);
+
+	}
+
 	return 0;
 }
