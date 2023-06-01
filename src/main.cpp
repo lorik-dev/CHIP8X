@@ -1,5 +1,7 @@
 #include <iostream>
 #include "display.h"
+#include <chrono>
+
 
 int main(int argc, char **argv) {
 	if (argc < 2) {
@@ -34,9 +36,19 @@ int main(int argc, char **argv) {
 
 		if (cpu->state == STATE_PAUSE) continue;
 
+		auto start = std::chrono::high_resolution_clock::now();
+
 		cpu->cycle();
 
-		SDL_Delay(16);
+		auto end = std::chrono::high_resolution_clock::now();
+
+		auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+
+		double delayTime = info::INSTRUCTION_TIME - (duration / 1000.0);
+
+		if (delayTime > 0) {
+			std::this_thread::sleep_for(std::chrono::microseconds(static_cast<long long>(delayTime)));
+		}
 
 		display->update_screen(cpu->SCREEN);
 

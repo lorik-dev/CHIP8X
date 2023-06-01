@@ -44,8 +44,9 @@ bool display::init_sdl() {
         info::INTERNAL_SCREEN_HEIGHT);
     if (!texture_sdl) {
         std::cerr << "ERROR: Could not create an SDL texture %s\n" << SDL_GetError();
+        return false;
     }
-    std::cout << "Texture initialized." << std::endl;
+    SDL_Log("SDL texture initialized.\n");
 
     return true; // Success
 }

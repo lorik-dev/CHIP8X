@@ -1,5 +1,4 @@
 #include <iomanip>
-
 #include "cpu.h"
 
 // At first-execution, indicates that no cpu instance
@@ -19,6 +18,10 @@ cpu::cpu() {
     stack.fill(0);
     v.fill(0);
 
+    gen = std::default_random_engine(std::random_device()());
+
+    distribution = std::uniform_int_distribution<unsigned int>(0, 255);
+
     state = STATE_RUNNING;
     std::cout << "CHIP8 core started." << std::endl;
 }
@@ -29,7 +32,7 @@ cpu::~cpu() {
 
 bool cpu::loadrom(const char* rom_name) {
     // Load ROM
-    FILE* rom; 
+    FILE* rom;
     errno_t err;
 
     if ((err = fopen_s(&rom, rom_name, "rb") != 0)) {
@@ -66,8 +69,10 @@ void cpu::fetch() {
 void cpu::execute() {
     printf("Address: 0x%04X, Opcode: 0x%04X \n", pc - 2, opcode);
     //std::cout << "prefix: " << prefix(opcode) << std::endl;
+    uint16_t result = 0;
     switch (prefix(opcode)) {
         case 0x0:
+            // 0x0EN branch
             switch(nn(opcode)){
                 case 0xE0:
                     // 0x00E0: Clear the screen
@@ -116,13 +121,97 @@ void cpu::execute() {
             // 0x7XNN: Add NN to VX
             v[x(opcode)] += nn(opcode);
             break;
+        case 0x8:
+            // 0x8XYN branch
+            switch (n(opcode)) {
+                case 0x0:
+                    // 0x8XY0: Set VX to VY
+                    v[x(opcode)] = v[y(opcode)];
+                    break;
+                case 0x1:
+                    // 0x8XY1: Set VX to VX OR VY
+                    v[x(opcode)] |= v[y(opcode)];
+                    break;
+                case 0x2:
+                    // 0x8XY2: Set VX to VX AND VY
+                    v[x(opcode)] &= v[y(opcode)];
+                    break;
+                case 0x3:
+                    // 0x8XY3: Set VX to VX XOR VY
+                    v[x(opcode)] ^= v[y(opcode)];
+                    break;
+                case 0x4:
+                    // 0x8XY4: Set VX to VX ADD VYf; VF set to 1 if there is a carry, 0 if there isn't
+                    result = v[x(opcode)] + v[y(opcode)];
+                    if (result > 255) {
+                        v[0xF] = 1; // Carry occured, set VF to 1
+                    }
+                    else {
+                        v[0xF] = 0; // No carry, set VF to 0
+                    }
+                    v[x(opcode)] += v[y(opcode)];
+                    break;
+                case 0x5:
+                    // 0x8XY5: Set VX to VX SUB VY result; VF set to 0 if there is a borrow, 1 when there isn't
+                    if (v[x(opcode)] >= v[y(opcode)]) {
+                        v[0xF] = 1; // No borrow, set VF to 1
+                    } 
+                    else {
+                        v[0xF] = 0; // Borrow occured, set VF to 0
+                    }
+                    v[x(opcode)] -= v[y(opcode)];
+                    break;
+                case 0x6: 
+                    // 0x8XY6: Set VF to least significant bit of VX; shift VX to the right by 1
+                    v[0xF] = v[x(opcode)] & 0x1;
+                    v[x(opcode)] >>= 1;
+                    break;
+                case 0x7:
+                    // 0x8XY7: Set VX to VY SUB VX result; VF set to 0 if there is a borrow; 1 when there isn't
+                    if (v[y(opcode)] >= v[x(opcode)]) {
+                        v[0xF] = 1; // No borrow, set VF to 1
+                    }
+                    else {
+                        v[0xF] = 0; // Borrow occured, set VF to 0
+                    }
+                    v[x(opcode)] = v[y(opcode)] - v[x(opcode)];
+                    break;
+                case 0xE:
+                    // 0x8XYE: Set VF to most significant bit of VX; shift VX left by 1
+                    v[0xF] = v[x(opcode)] & 0x80;
+                    v[x(opcode)] <<= 1;
+                    break;
+                default:
+                    illegal();
+                    break;
+            }
+            break;
+        case 0x9:
+            // 0x9XY0: Skips next instruction if VX != VY
+            if (v[x(opcode)] != v[y(opcode)]) {
+                skip();
+            }
+            break;
         case 0xA:
-            // 0xANNN
+            // 0xANNN: Set I to NNN
             i = nnn(opcode);
             break;
+        case 0xB:
+            // 0xBNNN: Jump to address NNN ADD V0
+            jump(v[0]);
+            break;
+        case 0xC: 
+            // 0xCXNN: Set VX to random_number(0-255) bitwise AND NN
+            v[x(opcode)] = distribution(gen) & nn(opcode);
         case 0xD:
             draw();
             break;
+        /*case 0xE:
+            // 0xEXNN branch
+            switch nn(opcode) {
+                case 0x9E: 
+                    // 0xEX9E: Skips next instruction if key stored in VX is pressed
+            }*/
         default:
             illegal();
             break;
@@ -138,6 +227,7 @@ void cpu::draw() {
         uint16_t line = memory[i + row];
         for (uint16_t width = 0; width < 8; width++) {
             // Convert 2D X,Y into 1D pixel index for screen array
+            //if ((x_root + row) >= info::INTERNAL_SCREEN_WIDTH) break;
             uint16_t pixel_index = (y_root + row) * info::INTERNAL_SCREEN_WIDTH + (x_root + width);   
             if (line & (0x80 >> width)) {
                 if (SCREEN[pixel_index] == info::FG_COLOR) {
@@ -175,8 +265,9 @@ void cpu::clear_screen() {
     SCREEN.fill(info::BG_COLOR);
 }
 
-void cpu::jump() {
-    pc = nnn(opcode);
+void cpu::jump(uint8_t addr_offset) {
+    // addr_offset overload to offset address for certiain opcodes
+    pc = nnn(opcode) + addr_offset;
 }
 
 void cpu::call() {

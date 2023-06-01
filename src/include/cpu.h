@@ -8,6 +8,7 @@
 #include <array>
 #include "data.h"
 #include "display.h"
+#include <random>
 
 // Emulator states
 typedef enum {
@@ -35,12 +36,19 @@ private:
     static std::shared_ptr<cpu> instance;
 
 
+
 public:
     ~cpu();
+
+    std::default_random_engine gen;
+
+    std::uniform_int_distribution<unsigned int> distribution;
 
     emulator_state_t state;             // Emulator state
 
     std::array<uint32_t, info::INTERNAL_SCREEN_PIXELS> SCREEN{};
+
+    std::array<uint8_t, 16> keypad{};
 
     bool draw_flag{};
 
@@ -58,7 +66,7 @@ public:
 
     void clear_screen();
 
-    void jump();
+    void jump(uint8_t addr_offset = 0);
 
     void skip();
 

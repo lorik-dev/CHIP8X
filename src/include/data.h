@@ -5,8 +5,8 @@
 
 #include <cstdint>
 #include <array>
+#include <random>
 
-//Convert BE CHIP8 opcode to LE format 
 #define prefix(opcode) ((opcode >>12) & 0xF)
 #define nnn(opcode) (opcode & 0x0FFF)
 #define nn(opcode) (opcode & 0x0FF)
@@ -19,13 +19,17 @@ namespace info {
     constexpr uint32_t ROM_START_ADDRESS = 0x200;	// Default ROM_START_ADDRESS: 0x200
     const uint32_t ROM_MAX_SIZE = (MEMORY_SIZE - ROM_START_ADDRESS); // Maximum allowed size with respect to MEMORY_SIZE and address space
 	const uint32_t STACK_SIZE = 32; // Maximum stack depth; default 32
+
 	constexpr uint16_t INTERNAL_SCREEN_WIDTH = 64; // CHIP8 original X resolution (64)
     constexpr uint16_t INTERNAL_SCREEN_HEIGHT = 32; // CHIP8 original Y resolution	(32)
     const uint32_t INTERNAL_SCREEN_PIXELS = (INTERNAL_SCREEN_WIDTH*INTERNAL_SCREEN_HEIGHT); // CHIP8 original resolution pixel amount
-	constexpr uint16_t DEFAULT_SCALE_FACTOR = 20; // Default resolution: 1280x640
+	constexpr uint32_t DEFAULT_SCALE_FACTOR = 20; // Default resolution: 1280x640
 	extern uint16_t SCALE_FACTOR;
-    constexpr uint64_t FG_COLOR = 0xd964ff43; // Foreground color RGBA8888; WHITE
-    constexpr uint32_t BG_COLOR = 0x00000000; // Background color RGBA8888; BLACK
+    constexpr uint64_t FG_COLOR = 0xFFFFFFFF; // Foreground color RGBA8888; WHITE (big-endian format)
+    constexpr uint32_t BG_COLOR = 0x00000000; // Background color RGBA8888; BLACK (big-endian format)
+
+	constexpr uint32_t CLOCK_SPEED = 550; // Desired clock speed in Hz; default 550Hz 
+	const double INSTRUCTION_TIME = 1000 / CLOCK_SPEED;	// Time between instructions in ms
 }
 
 constexpr std::array<uint8_t, 80> font_set = {
